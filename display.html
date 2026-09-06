@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Judo Score – Display</title>
   <style>
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body { height: 100%; }
     body {
       margin: 0;
@@ -13,6 +14,14 @@
       background: #232327;             /* grey shows through the cut-out */
       color: #fafafa;
       overflow: hidden;
+      --c2-bg: #d42a2a;
+      --c2-fg: #ffffff;
+      --c2-accent: #f87171;
+    }
+    body[data-theme="blue"] {
+      --c2-bg: #1e5fd9;
+      --c2-fg: #ffffff;
+      --c2-accent: #60a5fa;
     }
 
     /* white / red fill the screen */
@@ -28,13 +37,18 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      padding-top: 260px;   /* keep content clear of the notch */
       border-radius: 24px;
+      transition: box-shadow .15s, opacity .15s;
     }
     /* pull both scores toward the centre seam, side by side */
     .panel.white { background: #f4f4f5; color: #18181b; justify-content: flex-start; }
-    .panel.red   { background: #d42a2a; color: #ffffff; justify-content: flex-end; }
+    .panel.red   { background: var(--c2-bg); color: var(--c2-fg); justify-content: flex-end; }
+    .panel.won  { box-shadow: inset 0 0 0 8px #f4c20d; }
+    .panel.lost { opacity: .35; }
 
     .side {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -42,6 +56,34 @@
       padding: 0 4vw;
     }
 
+    /* score + WIN badge share a box so the badge floats without shifting layout */
+    .scorebox { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .winbadge {
+      position: absolute;
+      bottom: calc(100% + .5rem);
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-weight: 800;
+      font-size: clamp(2.4rem, 6vw, 4.6rem);
+      letter-spacing: .3em;
+      text-indent: .3em;
+      line-height: 1;
+      visibility: hidden;
+    }
+    .panel.won .winbadge { visibility: visible; }
+    .panel.won .fname    { visibility: hidden; }   /* WIN takes the name's place */
+
+    .fname {
+      font-size: clamp(1.2rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      opacity: .55;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+    }
     .pscore {
       font-size: clamp(7rem, 24vw, 22rem);
       font-weight: 800;
@@ -49,7 +91,7 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .shido { display: flex; gap: .8rem; }
+    .shido { display: flex; align-items: center; gap: .7rem; }
     .shido i {
       width: 44px;
       height: 44px;
@@ -58,6 +100,47 @@
       opacity: .3;
     }
     .shido i.on  { opacity: 1; background: #f4c20d; border-color: #f4c20d; }
+
+    /* doctor-intervention counter – anchored below so it never shifts the score */
+    .med {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      white-space: nowrap;
+    }
+    .shidolbl,
+    .medlbl { font-size: clamp(.7rem, 1.4vw, 1rem); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .45; }
+    .med i {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 4px solid currentColor;
+      opacity: .25;
+    }
+    .med i.on { opacity: 1; background: #ef4444; border-color: #ef4444; }
+
+    #fsHint {
+      position: fixed;
+      left: 50%;
+      bottom: 40px;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(24, 24, 27, .9);
+      color: #fafafa;
+      border: 1px solid #52525b;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s;
+    }
+    #fsHint.show { opacity: 1; }
 
     /* the cut-out: a grey notch carved into the top-centre */
     .notch {
@@ -68,7 +151,7 @@
       z-index: 5;
       background: #232327;
       border-radius: 0 0 30px 30px;
-      padding: 20px 40px 26px;
+      padding: 42px 40px 26px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -76,7 +159,7 @@
     }
 
     .timer {
-      font-size: 6.5rem;
+      font-size: 9rem;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       letter-spacing: .05em;
@@ -85,10 +168,37 @@
       background: #18181b;
       border: 3px solid #3f3f46;
       transition: color .15s, border-color .15s;
+      box-sizing: border-box;
+      min-width: 4.15em;         /* fixed footprint so the notch never reflows */
+      text-align: center;
     }
     .timer.stopped { color: #fafafa; }
     .timer.running { color: #4ade80; border-color: #4ade80; }
     .timer.done    { color: #f87171; border-color: #f87171; }
+    .timer.golden  { color: #f4c20d; border-color: #f4c20d; }
+
+    /* golden score: the grey seam / notch turns gold */
+    body.golden,
+    body.golden .notch { background: #d9b43c; }
+
+    .phaselabel {
+      position: absolute;
+      top: 10px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: .24em;
+      color: #f4c20d;
+    }
+
+    /* hantei (referee decision) */
+    .hantei { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .hantei .htitle { font-size: 1.1rem; font-weight: 800; letter-spacing: .25em; color: #f4c20d; }
+    .hantei .hpick { font-size: 2.4rem; font-weight: 800; letter-spacing: .1em; color: #6b6b73; }
+    .hantei .hpick.white { color: #f4f4f5; }
+    .hantei .hpick.red   { color: var(--c2-accent); }
 
     .oktime {
       display: flex;
@@ -100,11 +210,14 @@
       border-radius: 16px;
       padding: .1em .8em .16em;
       min-width: 120px;
+      visibility: hidden;          /* space reserved, only shown while a hold runs */
     }
+    .oktime.shown { visibility: visible; }
     .oktime b {
       font-size: 3rem;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
+      line-height: 1.1;
       color: #6b6b73;
     }
     .oktime small {
@@ -112,7 +225,9 @@
       letter-spacing: .18em;
       font-weight: 700;
       color: #fbbf24;
-      min-height: .95rem;
+      height: 1.15rem;
+      line-height: 1.15rem;
+      overflow: hidden;
     }
     .oktime.active b { color: #fafafa; }
     .oktime.run      { border-color: #fbbf24; }
@@ -120,35 +235,63 @@
     .oktime.paused   { border-color: #fbbf24; border-style: dashed; }
     .oktime.white    { border-color: #f4f4f5; }
     .oktime.white b  { color: #f4f4f5; }
-    .oktime.red      { border-color: #f87171; }
-    .oktime.red b    { color: #f87171; }
-    .oktime .arrow   { font-size: .9rem; color: inherit; min-height: 1rem; }
+    .oktime.red      { border-color: var(--c2-accent); }
+    .oktime.red b    { color: var(--c2-accent); }
+    .oktime .arrow   { font-size: .9rem; color: inherit; height: 1.15rem; line-height: 1.15rem; overflow: hidden; }
   </style>
 </head>
 <body>
   <div class="board">
     <!-- mirrored: RED left, WHITE right -->
-    <section class="panel red">
+    <section class="panel red" data-side="red">
       <div class="side">
-        <div class="pscore" data-score="red">0</div>
-        <div class="shido" data-side="red"><i></i><i></i><i></i></div>
+        <div class="fname" data-fname="red">Kämpfer 2</div>
+        <div class="scorebox">
+          <div class="winbadge">SIEG</div>
+          <div class="pscore" data-score="red">0</div>
+        </div>
+        <div class="shido" data-side="red"><span class="shidolbl" data-shidolbl>Shido</span><i></i><i></i><i></i></div>
+        <div class="med" data-side="red" hidden><span class="medlbl" data-medlbl>Arzt</span><i></i><i></i><i></i></div>
       </div>
     </section>
-    <section class="panel white">
+    <section class="panel white" data-side="white">
       <div class="side">
-        <div class="pscore" data-score="white">0</div>
-        <div class="shido" data-side="white"><i></i><i></i><i></i></div>
+        <div class="fname" data-fname="white">Kämpfer 1</div>
+        <div class="scorebox">
+          <div class="winbadge">SIEG</div>
+          <div class="pscore" data-score="white">0</div>
+        </div>
+        <div class="shido" data-side="white"><span class="shidolbl" data-shidolbl>Shido</span><i></i><i></i><i></i></div>
+        <div class="med" data-side="white" hidden><span class="medlbl" data-medlbl>Arzt</span><i></i><i></i><i></i></div>
       </div>
     </section>
   </div>
 
   <div class="notch">
+    <div id="phaseLabel" class="phaselabel"></div>
     <div id="timer" class="timer stopped">2:30</div>
     <div id="ok" class="oktime"><div id="okArrow" class="arrow"></div><b id="okElapsed">0</b><small id="okAward"></small></div>
+    <div id="hantei" class="hantei" hidden>
+      <div class="htitle" id="hanteiTitle">HANTEI</div>
+      <div id="hanteiPick" class="hpick">&#9664; &nbsp;?&nbsp; &#9654;</div>
+    </div>
   </div>
+
+  <div id="fsHint" data-fshint>F</div>
 
   <script>
     const NAMES = { yuko: "YUKO", wazaari: "WAZA-ARI", ippon: "IPPON" };
+    const I18N = {
+      de: { fighter1: "Kämpfer 1", fighter2: "Kämpfer 2", win: "SIEG",
+            hantei: "HANTEI", golden: "GOLDEN SCORE", hansoku: "HANSOKU-MAKE",
+            kiken: "KIKEN-GACHI", fusen: "FUSEN-GACHI",
+            white: "WEISS", red: "ROT", medLabel: "Arzt", shidoLabel: "Shido", fsHint: "Taste F für Vollbild" },
+      en: { fighter1: "Fighter 1", fighter2: "Fighter 2", win: "WIN",
+            hantei: "HANTEI", golden: "GOLDEN SCORE", hansoku: "HANSOKU-MAKE",
+            kiken: "KIKEN-GACHI", fusen: "FUSEN-GACHI",
+            white: "WHITE", red: "RED", medLabel: "Doctor", shidoLabel: "Shido", fsHint: "Press F for fullscreen" },
+    };
+    let curLang = "de";
     const timerEl = document.getElementById("timer");
     const okBox = document.getElementById("ok");
     const okElapsedEl = document.getElementById("okElapsed");
@@ -158,10 +301,63 @@
       sec = Math.max(0, Math.ceil(sec));
       return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
     }
+    function fitName(el) {
+      el.style.fontSize = "";
+      let size = parseFloat(getComputedStyle(el).fontSize), guard = 60;
+      while (el.scrollWidth > el.clientWidth + 1 && size > 10 && guard-- > 0) {
+        size -= 1;
+        el.style.fontSize = size + "px";
+      }
+    }
+    let lastState = null;
     function render(s) {
       if (!s || s.type !== "state") return;
-      document.querySelectorAll('[data-score="white"]').forEach(el => el.textContent = s.white);
-      document.querySelectorAll('[data-score="red"]').forEach(el => el.textContent = s.red);
+      lastState = s;
+      document.body.dataset.theme = s.theme === "blue" ? "blue" : "red";
+
+      curLang = s.lang === "en" ? "en" : "de";
+      const T = I18N[curLang];
+      const names = s.names || { white: "", red: "" };
+      document.documentElement.lang = curLang;
+      const fnW = document.querySelector('[data-fname="white"]');
+      const fnR = document.querySelector('[data-fname="red"]');
+      fnW.textContent = names.white || T.fighter1;
+      fnR.textContent = names.red || T.fighter2;
+      fitName(fnW); fitName(fnR);
+      document.querySelectorAll(".winbadge").forEach(el => el.textContent = T.win);
+      document.getElementById("hanteiTitle").textContent = T.hantei;
+      document.querySelectorAll("[data-medlbl]").forEach(el => el.textContent = T.medLabel);
+      document.querySelectorAll("[data-shidolbl]").forEach(el => el.textContent = T.shidoLabel);
+
+      const m = s.match || { phase: "regular", winner: null, winBy: null };
+      const other = side => (side === "white" ? "red" : "white");
+      document.body.classList.toggle("golden", m.phase === "golden");
+
+      const pl = document.getElementById("phaseLabel");
+      if (m.winBy === "hansoku")        pl.textContent = T.hansoku;
+      else if (m.winBy === "kiken")     pl.textContent = T.kiken;
+      else if (m.winBy === "fusen")     pl.textContent = T.fusen;
+      else if (m.phase === "golden")    pl.textContent = T.golden;
+      else                             pl.textContent = "";
+
+      const hanteiBox = document.getElementById("hantei");
+      hanteiBox.hidden = m.phase !== "hantei";
+      const pick = document.getElementById("hanteiPick");
+      if (m.winner === "white")    { pick.textContent = T.white + " ▶"; pick.className = "hpick white"; }
+      else if (m.winner === "red") { pick.textContent = "◀ " + T.red;  pick.className = "hpick red"; }
+      else                         { pick.textContent = "◀  ?  ▶"; pick.className = "hpick"; }
+
+      ["white", "red"].forEach(side => {
+        const val = s[side] || 0;
+        const won = m.winner === side || val >= 10;
+        document.querySelectorAll('[data-score="' + side + '"]').forEach(el => {
+          el.textContent = String(val);            // the number is always shown
+        });
+        document.querySelectorAll('.panel[data-side="' + side + '"]').forEach(p => {
+          p.classList.toggle("won", won);
+          p.classList.toggle("lost", m.winner === other(side));
+        });
+      });
 
       const shido = s.shido || { white: 0, red: 0 };
       ["white", "red"].forEach(side => {
@@ -171,14 +367,27 @@
         });
       });
 
+      const med = s.med || { white: 0, red: 0 };
+      ["white", "red"].forEach(side => {
+        const n = med[side] || 0;
+        document.querySelectorAll('.med[data-side="' + side + '"]').forEach(box => {
+          box.hidden = n === 0;                   // only shown once the doctor has been logged
+          box.querySelectorAll("i").forEach((dot, i) => dot.classList.toggle("on", i < n));
+        });
+      });
+
       const t = s.timer || { remaining: 0, running: false };
       timerEl.textContent = fmt(t.remaining);
-      timerEl.className = "timer " + (t.remaining <= 0 ? "done" : (t.running ? "running" : "stopped"));
+      if (m.phase === "golden") {
+        timerEl.className = "timer golden";
+      } else {
+        timerEl.className = "timer " + (t.remaining <= 0 ? "done" : (t.running ? "running" : "stopped"));
+      }
 
       const o = s.osae || {};
       const active = o.active !== undefined ? o.active : o.running;
       okBox.className = "oktime"
-        + (active ? " active" : "")
+        + (active ? " shown active" : "")     // space always reserved; only visible while live
         + (o.running ? " run" : (active ? " paused" : ""))
         + (o.side ? " " + o.side : "");
       document.getElementById("okArrow").textContent =
@@ -187,10 +396,47 @@
       okAwardEl.textContent = (active && o.award) ? NAMES[o.award] : "";
     }
 
-    /* ---------- receive state from the control window ---------- */
+    /* ---------- fullscreen (driven from the control window) ---------- */
+    const fsHint = document.getElementById("fsHint");
+    let fsHintT = null;
+    function showFsHint() {
+      fsHint.textContent = I18N[curLang].fsHint;
+      fsHint.classList.add("show");
+      clearTimeout(fsHintT);
+      fsHintT = setTimeout(() => fsHint.classList.remove("show"), 4000);
+    }
+    function enterFullscreen() {
+      if (document.fullscreenElement) return;
+      const p = document.documentElement.requestFullscreen();
+      if (p && p.catch) p.catch(() => showFsHint());   // browser blocked it – tell the operator to press F
+    }
+    function exitFullscreen() {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "f" || e.key === "F") {
+        if (document.fullscreenElement) exitFullscreen(); else enterFullscreen();
+      }
+    });
+    // any click in the display window also enters fullscreen (a real user gesture)
+    document.addEventListener("click", () => { if (!document.fullscreenElement) enterFullscreen(); });
+    let idleT = null;
+    document.addEventListener("mousemove", () => {
+      document.body.style.cursor = "";
+      clearTimeout(idleT);
+      idleT = setTimeout(() => { document.body.style.cursor = "none"; }, 2500);
+    });
+
+    /* ---------- receive state / commands from the control window ---------- */
     let lastMsg = 0;
     function accept(data) {
-      if (!data || data.type !== "state") return;
+      if (!data) return;
+      if (data.type === "cmd") {
+        if (data.cmd === "fs-on")  enterFullscreen();
+        if (data.cmd === "fs-off") exitFullscreen();
+        return;
+      }
+      if (data.type !== "state") return;
       lastMsg = Date.now();
       render(data);
     }
@@ -206,6 +452,9 @@
       if (e.key === "judo_live" && e.newValue) {
         try { accept(JSON.parse(e.newValue)); } catch (err) {}
       }
+      if (e.key === "judo_cmd" && e.newValue) {
+        try { accept(JSON.parse(e.newValue)); } catch (err) {}
+      }
     });
 
     function announce() {
@@ -215,6 +464,8 @@
     announce();
     setTimeout(announce, 400);
     setTimeout(announce, 1200);
+
+    window.addEventListener("resize", () => { if (lastState) render(lastState); });
 
     // fallback poll in case no live channel is available at all
     setInterval(() => {
