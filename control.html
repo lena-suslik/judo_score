@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judo Score – Control</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #232327;
+      color: #fafafa;
+      overflow: hidden;
+    }
+
+    /* white / red fill the screen */
+    .board {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      gap: 22px;
+      padding: 40px;
+    }
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1.1rem;
+      padding: 250px 3.5vw 26px;   /* keep content clear of the notch */
+      border-radius: 24px;
+    }
+    .panel.white { background: #f4f4f5; color: #18181b; align-items: flex-end; }
+    .panel.red   { background: #d42a2a; color: #ffffff; align-items: flex-start; }
+
+    .pscore {
+      font-size: clamp(4rem, 12vw, 9rem);
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* shido (penalty) circles */
+    .shido { display: flex; gap: .5rem; }
+    .shido i {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 3px solid currentColor;
+      opacity: .35;
+    }
+    .shido i.on { opacity: 1; background: #f4c20d; border-color: #f4c20d; }
+    .scores { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
+    .sbtn {
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      padding: .7rem 1.1rem;
+      min-width: 108px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .15rem;
+      font-weight: 700;
+    }
+    .sbtn .sname { font-size: 1.05rem; }
+    .sbtn .spts  { font-size: .8rem; opacity: .65; font-weight: 600; }
+    .panel.white .sbtn { background: #18181b; color: #f4f4f5; }
+    .panel.red   .sbtn { background: #ffffff; color: #d42a2a; }
+
+    .ctrls { display: flex; gap: .6rem; }
+    .ctrls button {
+      border: none;
+      border-radius: 999px;
+      padding: .4rem 1.1rem;
+      font-size: .85rem;
+      cursor: pointer;
+      color: inherit;
+      background: rgba(0, 0, 0, .12);
+    }
+    .panel.red .ctrls button { background: rgba(255, 255, 255, .22); }
+
+    /* the cut-out notch carrying both clocks + osae-komi controls */
+    .notch {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      background: #232327;
+      border-radius: 0 0 30px 30px;
+      padding: 16px 34px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timer {
+      font-size: 4.6rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .05em;
+      padding: .1em .6em;
+      border-radius: 18px;
+      background: #18181b;
+      border: 3px solid #3f3f46;
+      cursor: pointer;
+      user-select: none;
+      transition: color .15s, border-color .15s;
+    }
+    .timer.stopped { color: #fafafa; }
+    .timer.running { color: #4ade80; border-color: #4ade80; }
+    .timer.done    { color: #f87171; border-color: #f87171; }
+
+    .oktime {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: #18181b;
+      border: 3px solid #3f3f46;
+      border-radius: 14px;
+      padding: .06em .8em .12em;
+      min-width: 108px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .oktime b { font-size: 2.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .oktime small {
+      font-size: .64rem;
+      letter-spacing: .15em;
+      font-weight: 700;
+      min-height: .78rem;
+      color: #fbbf24;
+    }
+    .oktime.run      { border-color: #fbbf24; }
+    .oktime.paused   { border-color: #fbbf24; border-style: dashed; }
+    .oktime.white    { border-color: #f4f4f5; }
+    .oktime.red      { border-color: #f87171; }
+
+    /* one Osae-komi clock flanked by assign arrows */
+    .okrow { display: flex; align-items: stretch; gap: 8px; }
+    .okarrow {
+      border: 2px solid #3f3f46;
+      background: #18181b;
+      color: #9a9aa2;
+      border-radius: 12px;
+      padding: 0 .7rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform .1s;
+    }
+    .okarrow.armed { border-color: #fbbf24; color: #fbbf24; animation: pulse 1s ease-in-out infinite; }
+    .okarrow.active[data-side="white"] { background: #f4f4f5; color: #18181b; border-color: #f4f4f5; }
+    .okarrow.active[data-side="red"]   { background: #d42a2a; color: #ffffff; border-color: #d42a2a; }
+    .okarrow:disabled { opacity: .3; cursor: default; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+    .okctrl { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+    .okstop, .okcancel {
+      border: none;
+      border-radius: 11px;
+      padding: .5rem 1rem;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: .85rem;
+      background: #3f3f46;
+      color: #fafafa;
+    }
+    .okstop { background: #4ade80; color: #052e12; }
+    .okstop:disabled { opacity: .4; cursor: default; }
+
+    .hint { font-size: .74rem; color: #8b8b93; text-align: center; }
+
+    .openbtn {
+      position: absolute;
+      right: 16px;
+      bottom: 14px;
+      z-index: 6;
+      background: #38bdf8;
+      color: #08263a;
+      border: none;
+      border-radius: 10px;
+      padding: .5rem 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .nextbtn {
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 6;
+      background: #e5e5e5;
+      color: #18181b;
+      border: 2px solid #e5e5e5;
+      border-radius: 10px;
+      padding: .6rem 1.8rem;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .nextbtn.armed { background: #f4c20d; border-color: #f4c20d; }
+
+    .presets {
+      position: absolute;
+      left: 16px;
+      bottom: 14px;
+      z-index: 6;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .presets .plabel { font-size: .74rem; color: #8b8b93; font-weight: 700; }
+    .presets select {
+      background: #18181b;
+      color: #fafafa;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: .4rem .5rem;
+      font-size: .82rem;
+      max-width: 150px;
+    }
+    .presets button {
+      background: #3f3f46;
+      color: #fafafa;
+      border: none;
+      border-radius: 8px;
+      padding: .4rem .6rem;
+      font-size: .78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .presets button:disabled { opacity: .35; cursor: default; }
+
+    .pf input[type="text"] { width: 150px; }
+
+    .pop {
+      position: fixed;
+      z-index: 50;
+      width: 232px;
+      background: #18181b;
+      color: #fafafa;
+      border: 1px solid #3f3f46;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, .55);
+    }
+    .pop h4 { margin: 0 0 10px; font-size: .9rem; font-weight: 600; }
+    .pf { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
+    .pf span { font-size: .85rem; }
+    .pf input {
+      width: 84px;
+      padding: .4rem .5rem;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+      background: #232327;
+      color: #fafafa;
+      font-size: 1rem;
+    }
+    .pop .row { display: flex; gap: .5rem; margin-top: 12px; }
+    .pop .row button { flex: 1; border: none; border-radius: 8px; padding: .5rem; cursor: pointer; font-weight: 600; }
+    .pop .save   { background: #4ade80; color: #052e12; }
+    .pop .cancel { background: #3f3f46; color: #fafafa; }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <section class="panel white" data-side="white">
+      <div class="pscore" data-score="white">0</div>
+      <div class="shido" data-side="white" title="Left-click +1 shido · right-click −1"><i></i><i></i><i></i></div>
+      <div class="scores" data-side="white"></div>
+      <div class="ctrls">
+        <button data-act="undo" data-side="white">Undo</button>
+        <button data-act="reset" data-side="white">Reset</button>
+      </div>
+    </section>
+
+    <section class="panel red" data-side="red">
+      <div class="pscore" data-score="red">0</div>
+      <div class="shido" data-side="red" title="Left-click +1 shido · right-click −1"><i></i><i></i><i></i></div>
+      <div class="scores" data-side="red"></div>
+      <div class="ctrls">
+        <button data-act="undo" data-side="red">Undo</button>
+        <button data-act="reset" data-side="red">Reset</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="notch">
+    <div id="timer" class="timer stopped" title="Click or press Space to start / stop">2:30</div>
+
+    <div class="okrow">
+      <button class="okarrow" data-side="white" title="Assign hold to White">&#9664;</button>
+      <div id="oktime" class="oktime" title="Click to pause / stop · right-click to set thresholds">
+        <b id="okElapsed">0</b>
+        <small id="okAward"></small>
+      </div>
+      <button class="okarrow" data-side="red" title="Assign hold to Red">&#9654;</button>
+    </div>
+
+    <div class="okctrl">
+      <button id="okStart" class="okstop">Osae-komi</button>
+      <button id="okCancel" class="okcancel">Cancel</button>
+    </div>
+
+    <div class="hint">Osae-komi: button starts, arrow assigns the side · click the clock to pause (before assigning) or stop &amp; score (after) · main timer: click / Space start-stop, R reset · right-click a timer to configure it</div>
+  </div>
+
+  <div class="presets">
+    <span class="plabel">Preset</span>
+    <select id="presetSel" title="Select a preset to apply its match time, points and thresholds"></select>
+    <button id="presetSave"   title="Save current settings as a new preset">+ New</button>
+    <button id="presetUpdate" title="Overwrite the selected preset with the current settings">Save</button>
+    <button id="presetRename" title="Rename the selected preset">Rename</button>
+    <button id="presetDelete" title="Delete the selected preset">Delete</button>
+  </div>
+
+  <button id="nextFight" class="nextbtn">Next fight</button>
+  <button id="openDisp" class="openbtn">Open display window</button>
+
+  <div id="pop" class="pop" hidden>
+    <h4 id="popTitle">Edit</h4>
+    <div id="popBody"></div>
+    <div class="row">
+      <button class="save" id="popSave">Save</button>
+      <button class="cancel" id="popCancel">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+       State
+       ============================================================ */
+    const SCORES = [
+      { id: "yuko",    name: "Yuko" },
+      { id: "wazaari", name: "Waza-ari" },
+      { id: "ippon",   name: "Ippon" },
+    ];
+    const DEF = {
+      dur:   150,   // match time in seconds (2:30)
+      score: { white: 0, red: 0 },
+      shido: { white: 0, red: 0 },
+      hist:  { white: [], red: [] },
+      pts:   { yuko: 1, wazaari: 2, ippon: 5 },
+      okcfg: { yuko: 5, wazaari: 10, ippon: 20 },
+    };
+
+    function loadState() {
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem("judo_state") || "{}"); } catch (e) {}
+      return {
+        dur:   Number.isFinite(saved.dur) && saved.dur > 0 ? saved.dur : DEF.dur,
+        score: Object.assign({}, DEF.score, saved.score),
+        shido: Object.assign({}, DEF.shido, saved.shido),
+        hist:  { white: (saved.hist && saved.hist.white) || [], red: (saved.hist && saved.hist.red) || [] },
+        pts:   Object.assign({}, DEF.pts, saved.pts),
+        okcfg: Object.assign({}, DEF.okcfg, saved.okcfg),
+        presets:      Array.isArray(saved.presets) ? saved.presets : [],
+        presetActive: saved.presetActive || null,
+      };
+    }
+    const S = loadState();
+
+    let timer = { remaining: S.dur, running: false };
+    let osae  = { active: false, running: false, side: null, elapsed: 0 };
+    let tLast = 0, oLast = 0;
+
+    function persist() {
+      try {
+        localStorage.setItem("judo_state", JSON.stringify({
+          dur: S.dur, score: S.score, shido: S.shido, hist: S.hist, pts: S.pts, okcfg: S.okcfg,
+          presets: S.presets, presetActive: S.presetActive
+        }));
+      } catch (e) {}
+    }
+
+    /* ============================================================
+       Talking to the display window
+       ============================================================ */
+    let bc = null;
+    try { bc = new BroadcastChannel("judo"); } catch (e) {}
+    let displayWin = null;
+
+    function okReachedId() {
+      if (osae.elapsed >= S.okcfg.ippon)   return "ippon";
+      if (osae.elapsed >= S.okcfg.wazaari) return "wazaari";
+      if (osae.elapsed >= S.okcfg.yuko)    return "yuko";
+      return null;
+    }
+    function snapshot() {
+      return {
+        type: "state",
+        white: S.score.white,
+        red: S.score.red,
+        shido: { white: S.shido.white, red: S.shido.red },
+        timer: { remaining: timer.remaining, running: timer.running },
+        osae: { active: osae.active, running: osae.running, elapsed: osae.elapsed, side: osae.side, award: okReachedId() },
+      };
+    }
+    function push() {
+      const s = snapshot();
+      try { bc && bc.postMessage(s); } catch (e) {}
+      try { if (displayWin && !displayWin.closed) displayWin.postMessage(s, "*"); } catch (e) {}
+      try { localStorage.setItem("judo_live", JSON.stringify(s)); } catch (e) {}
+    }
+    setInterval(push, 1000);
+
+    window.addEventListener("message", (e) => {
+      if (e.data && e.data.type === "ready") { if (e.source) displayWin = e.source; push(); }
+    });
+    if (bc) bc.onmessage = (e) => { if (e.data && e.data.type === "ready") push(); };
+
+    document.getElementById("openDisp").addEventListener("click", () => {
+      displayWin = window.open("display.html", "judoDisplay");
+      setTimeout(push, 400);
+      setTimeout(push, 1400);
+    });
+
+    /* ============================================================
+       Score buttons
+       ============================================================ */
+    function renderButtons() {
+      document.querySelectorAll(".scores").forEach(box => {
+        const side = box.dataset.side;
+        box.innerHTML = "";
+        SCORES.forEach(s => {
+          const b = document.createElement("button");
+          b.className = "sbtn";
+          b.dataset.side = side;
+          b.dataset.pid = s.id;
+          b.innerHTML = '<span class="sname">' + s.name + '</span>' +
+                        '<span class="spts">+' + S.pts[s.id] + '</span>';
+          box.appendChild(b);
+        });
+      });
+    }
+    function renderScore(side) {
+      document.querySelectorAll('[data-score="' + side + '"]').forEach(el => el.textContent = S.score[side]);
+    }
+    function renderShido(side) {
+      const n = S.shido[side];
+      document.querySelectorAll('.shido[data-side="' + side + '"]').forEach(box => {
+        [...box.children].forEach((dot, i) => {
+          dot.classList.toggle("on", i < n);
+        });
+      });
+    }
+    function setShido(side, n) {
+      S.shido[side] = Math.max(0, Math.min(3, n));
+      renderShido(side); persist(); push();
+    }
+
+    function award(side, pts, label) {
+      S.hist[side].push({ pts, label });
+      S.score[side] = Math.max(0, S.score[side] + pts);
+      renderScore(side); persist(); push();
+    }
+    function undo(side) {
+      const last = S.hist[side].pop();
+      if (!last) return;
+      S.score[side] = Math.max(0, S.score[side] - last.pts);
+      renderScore(side); persist(); push();
+    }
+    function resetSide(side) {
+      S.hist[side] = [];
+      S.score[side] = 0;
+      S.shido[side] = 0;
+      renderScore(side); renderShido(side); persist(); push();
+    }
+
+    const board = document.querySelector(".board");
+    board.addEventListener("click", (e) => {
+      const shido = e.target.closest(".shido");
+      if (shido) { setShido(shido.dataset.side, S.shido[shido.dataset.side] + 1); return; }
+
+      const sbtn = e.target.closest(".sbtn");
+      if (sbtn) {
+        const s = SCORES.find(x => x.id === sbtn.dataset.pid);
+        award(sbtn.dataset.side, S.pts[s.id], s.name);
+        return;
+      }
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      if (btn.dataset.act === "undo")  undo(btn.dataset.side);
+      if (btn.dataset.act === "reset") resetSide(btn.dataset.side);
+    });
+
+    /* ============================================================
+       Editor popup
+       ============================================================ */
+    const pop = document.getElementById("pop");
+    const popTitle = document.getElementById("popTitle");
+    const popBody = document.getElementById("popBody");
+    let currentSave = null;
+
+    function openEditor(title, fields, onSave, x, y) {
+      popTitle.textContent = title;
+      popBody.innerHTML = "";
+      const inputs = {};
+      fields.forEach(f => {
+        const row = document.createElement("label");
+        row.className = "pf";
+        row.innerHTML = "<span>" + f.label + "</span>";
+        const inp = document.createElement("input");
+        if (f.type === "text") {
+          inp.type = "text";
+          inp.value = f.value == null ? "" : f.value;
+        } else {
+          inp.type = "number";
+          inp.min = String(f.min == null ? 1 : f.min);
+          inp.step = "1";
+          inp.value = f.value;
+        }
+        row.appendChild(inp);
+        popBody.appendChild(row);
+        inputs[f.key] = inp;
+      });
+      currentSave = () => {
+        const out = {}; let ok = true;
+        for (const k in inputs) {
+          const el = inputs[k];
+          if (el.type === "text") {
+            const v = el.value.trim();
+            if (!v) ok = false;
+            out[k] = v;
+          } else {
+            const v = parseInt(el.value, 10);
+            const lo = parseInt(el.min || "1", 10);
+            if (!Number.isFinite(v) || v < lo) ok = false;
+            out[k] = v;
+          }
+        }
+        if (ok) onSave(out);
+        closePop();
+      };
+      pop.hidden = false;
+      const w = 232, h = pop.offsetHeight || 160;
+      if (x == null) { x = (window.innerWidth - w) / 2; y = (window.innerHeight - h) / 2; }
+      pop.style.left = Math.max(10, Math.min(x, window.innerWidth  - w - 10)) + "px";
+      pop.style.top  = Math.max(10, Math.min(y, window.innerHeight - h - 10)) + "px";
+      const first = Object.values(inputs)[0];
+      if (first) { first.focus(); first.select(); }
+    }
+    function closePop() { pop.hidden = true; currentSave = null; }
+    document.getElementById("popSave").addEventListener("click", () => currentSave && currentSave());
+    document.getElementById("popCancel").addEventListener("click", closePop);
+    popBody.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); currentSave && currentSave(); }
+      if (e.key === "Escape") closePop();
+    });
+    document.addEventListener("mousedown", (e) => {
+      if (!pop.hidden && !pop.contains(e.target)) closePop();
+    });
+
+    board.addEventListener("contextmenu", (e) => {
+      const shido = e.target.closest(".shido");
+      if (shido) { e.preventDefault(); setShido(shido.dataset.side, S.shido[shido.dataset.side] - 1); return; }
+
+      const sbtn = e.target.closest(".sbtn");
+      if (!sbtn) return;
+      e.preventDefault();
+      const s = SCORES.find(x => x.id === sbtn.dataset.pid);
+      openEditor(s.name + " – points", [{ key: "pts", label: "Points", value: S.pts[s.id] }],
+        (o) => { S.pts[s.id] = o.pts; markCustom(); renderButtons(); persist(); }, e.clientX, e.clientY);
+    });
+
+    /* ============================================================
+       Osae-komi timer (counts up)
+       ============================================================ */
+    const oktimeBox = document.getElementById("oktime");
+    const okElapsedEl = document.getElementById("okElapsed");
+    const okAwardEl = document.getElementById("okAward");
+
+    const okStartBtn = document.getElementById("okStart");
+
+    function okRender() {
+      okElapsedEl.textContent = Math.floor(osae.elapsed);
+      const id = okReachedId();
+      okAwardEl.textContent = (osae.active && id)
+        ? SCORES.find(s => s.id === id).name.toUpperCase() : "";
+
+      oktimeBox.className = "oktime"
+        + (osae.running ? " run" : (osae.active ? " paused" : ""))
+        + (osae.side ? " " + osae.side : "");
+
+      const armed = osae.active && !osae.side;
+      document.querySelectorAll(".okarrow").forEach(b => {
+        b.classList.toggle("armed", armed);
+        b.classList.toggle("active", osae.side === b.dataset.side);
+        b.disabled = !osae.active;
+      });
+
+      okStartBtn.disabled = osae.active;
+      okStartBtn.textContent = osae.active ? "Running…" : "Osae-komi";
+    }
+
+    function okStart() {
+      osae = { active: true, running: true, side: null, elapsed: 0 };
+      oLast = performance.now();
+      okRender(); push();
+    }
+    function okAssign(side) {
+      if (!osae.active) return;
+      osae.side = side;
+      if (osae.elapsed >= S.okcfg.ippon) { okFinish(true); return; }  // already maxed
+      okRender(); push();
+    }
+    function okClockClick() {
+      if (!osae.active) return;
+      if (!osae.side) {
+        osae.running = !osae.running;          // before assigning: pause / resume
+        if (osae.running) oLast = performance.now();
+        okRender(); push();
+      } else {
+        okFinish(true);                        // after assigning: stop & score
+      }
+    }
+    function okFinish(doAward) {
+      const id = okReachedId();
+      const side = osae.side;
+      if (doAward && id && side) {
+        const s = SCORES.find(x => x.id === id);
+        award(side, S.pts[id], "Osae-komi " + s.name);
+      }
+      osae = { active: false, running: false, side: null, elapsed: 0 };
+      okRender(); push();
+    }
+    function okTick() {
+      if (!osae.running) return;
+      const now = performance.now();
+      osae.elapsed += (now - oLast) / 1000;
+      oLast = now;
+      if (osae.elapsed >= S.okcfg.ippon) {
+        osae.elapsed = S.okcfg.ippon;
+        if (osae.side) { okFinish(true); return; }
+        osae.running = false;                  // freeze at max, wait for a side
+      }
+      okRender(); push();
+    }
+    setInterval(okTick, 100);
+
+    okStartBtn.addEventListener("click", okStart);
+    document.getElementById("okCancel").addEventListener("click", () => okFinish(false));
+    document.querySelectorAll(".okarrow").forEach(b =>
+      b.addEventListener("click", () => okAssign(b.dataset.side)));
+    oktimeBox.addEventListener("click", okClockClick);
+
+    oktimeBox.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      openEditor("Osae-komi thresholds (seconds)", [
+        { key: "yuko",    label: "Yuko",     value: S.okcfg.yuko },
+        { key: "wazaari", label: "Waza-ari", value: S.okcfg.wazaari },
+        { key: "ippon",   label: "Ippon",    value: S.okcfg.ippon },
+      ], (o) => { S.okcfg = o; markCustom(); persist(); okRender(); }, e.clientX, e.clientY);
+    });
+
+    /* ============================================================
+       Main timer
+       ============================================================ */
+    const timerEl = document.getElementById("timer");
+    function fmt(sec) {
+      sec = Math.max(0, Math.ceil(sec));
+      return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+    }
+    function timerRender() {
+      timerEl.textContent = fmt(timer.remaining);
+      timerEl.className = "timer " + (timer.remaining <= 0 ? "done" : (timer.running ? "running" : "stopped"));
+    }
+    function timerTick() {
+      if (!timer.running) return;
+      const now = performance.now();
+      timer.remaining -= (now - tLast) / 1000;
+      tLast = now;
+      if (timer.remaining <= 0) { timer.remaining = 0; timer.running = false; }
+      timerRender(); push();
+    }
+    function toggleTimer() {
+      if (timer.remaining <= 0) return;
+      timer.running = !timer.running;
+      tLast = performance.now();
+      timerRender(); push();
+    }
+    function resetTimer() { timer = { remaining: S.dur, running: false }; timerRender(); push(); }
+
+    timerEl.addEventListener("click", toggleTimer);
+    timerEl.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      openEditor("Match time", [
+        { key: "min", label: "Minutes", value: Math.floor(S.dur / 60), min: 0 },
+        { key: "sec", label: "Seconds", value: S.dur % 60, min: 0 },
+      ], (o) => {
+        const total = o.min * 60 + o.sec;
+        if (total < 1) return;
+        S.dur = total;
+        if (!timer.running) timer.remaining = S.dur;
+        markCustom(); persist(); timerRender(); push();
+      }, e.clientX, e.clientY);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT") return;
+      if (e.code === "Space") { e.preventDefault(); toggleTimer(); }
+      if (e.key === "r" || e.key === "R") resetTimer();
+    });
+    setInterval(timerTick, 200);
+
+    /* ============================================================
+       Presets (control only) – bundle match time + points + thresholds
+       ============================================================ */
+    const presetSel = document.getElementById("presetSel");
+
+    function markCustom() {
+      if (S.presetActive !== null) { S.presetActive = null; renderPresets(); }
+    }
+
+    function renderPresets() {
+      presetSel.innerHTML = "";
+      if (!S.presets.length) {
+        const o = document.createElement("option");
+        o.value = ""; o.textContent = "(no presets)";
+        presetSel.appendChild(o);
+      } else {
+        if (!S.presetActive) {
+          const o = document.createElement("option");
+          o.value = ""; o.textContent = "— custom —"; o.selected = true;
+          presetSel.appendChild(o);
+        }
+        S.presets.forEach(p => {
+          const o = document.createElement("option");
+          o.value = p.id; o.textContent = p.name;
+          if (p.id === S.presetActive) o.selected = true;
+          presetSel.appendChild(o);
+        });
+      }
+      const sel = !!S.presetActive;
+      document.getElementById("presetUpdate").disabled = !sel;
+      document.getElementById("presetRename").disabled = !sel;
+      document.getElementById("presetDelete").disabled = !sel;
+    }
+
+    function applyPreset(id) {
+      const p = S.presets.find(x => x.id === id);
+      if (!p) return;
+      S.dur   = p.dur;
+      S.pts   = Object.assign({}, DEF.pts, p.pts);
+      S.okcfg = Object.assign({}, DEF.okcfg, p.okcfg);
+      S.presetActive = id;
+      if (!timer.running) timer.remaining = S.dur;
+      renderButtons(); okRender(); timerRender();
+      renderPresets(); persist(); push();
+    }
+
+    function newPresetId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    presetSel.addEventListener("change", (e) => {
+      if (e.target.value) applyPreset(e.target.value);
+    });
+
+    document.getElementById("presetSave").addEventListener("click", () => {
+      openEditor("New preset", [{ key: "name", label: "Name", type: "text", value: "" }], (o) => {
+        const id = newPresetId();
+        S.presets.push({
+          id, name: o.name,
+          dur: S.dur,
+          pts: Object.assign({}, S.pts),
+          okcfg: Object.assign({}, S.okcfg),
+        });
+        S.presetActive = id;
+        renderPresets(); persist();
+      });
+    });
+
+    document.getElementById("presetUpdate").addEventListener("click", () => {
+      const p = S.presets.find(x => x.id === presetSel.value);
+      if (!p) return;
+      p.dur = S.dur;
+      p.pts = Object.assign({}, S.pts);
+      p.okcfg = Object.assign({}, S.okcfg);
+      S.presetActive = p.id;
+      renderPresets(); persist();
+    });
+
+    document.getElementById("presetRename").addEventListener("click", () => {
+      const p = S.presets.find(x => x.id === presetSel.value) || S.presets[0];
+      if (!p) return;
+      openEditor("Rename preset", [{ key: "name", label: "Name", type: "text", value: p.name }], (o) => {
+        p.name = o.name;
+        renderPresets(); persist();
+      });
+    });
+
+    document.getElementById("presetDelete").addEventListener("click", () => {
+      const idx = S.presets.findIndex(x => x.id === presetSel.value);
+      const target = idx >= 0 ? idx : (S.presets.length ? 0 : -1);
+      if (target < 0) return;
+      const removed = S.presets.splice(target, 1)[0];
+      if (S.presetActive === removed.id) S.presetActive = null;
+      renderPresets(); persist();
+    });
+
+    /* ============================================================
+       Next fight – reset timer, scores and penalties
+       ============================================================ */
+    function nextFight() {
+      S.score.white = 0; S.score.red = 0;
+      S.shido.white = 0; S.shido.red = 0;
+      S.hist.white = []; S.hist.red = [];
+      osae = { active: false, running: false, side: null, elapsed: 0 };
+      timer = { remaining: S.dur, running: false };
+      persist();
+      renderScore("white"); renderScore("red");
+      renderShido("white"); renderShido("red");
+      okRender(); timerRender(); push();
+    }
+    (function () {
+      const btn = document.getElementById("nextFight");
+      let armed = false, t = null;
+      btn.addEventListener("click", () => {
+        if (!armed) {
+          armed = true;
+          btn.classList.add("armed");
+          btn.textContent = "Tap again to reset";
+          t = setTimeout(() => { armed = false; btn.classList.remove("armed"); btn.textContent = "Next fight"; }, 3000);
+          return;
+        }
+        clearTimeout(t); armed = false;
+        btn.classList.remove("armed"); btn.textContent = "Next fight";
+        nextFight();
+      });
+    })();
+
+    /* ============================================================
+       Initial paint
+       ============================================================ */
+    renderButtons();
+    renderScore("white");
+    renderScore("red");
+    renderShido("white");
+    renderShido("red");
+    renderPresets();
+    okRender();
+    timerRender();
+    push();
+  </script>
+</body>
+</html>

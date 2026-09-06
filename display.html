@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judo Score – Display</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #232327;             /* grey shows through the cut-out */
+      color: #fafafa;
+      overflow: hidden;
+    }
+
+    /* white / red fill the screen */
+    .board {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      gap: 22px;
+      padding: 46px;
+    }
+    .panel {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 24px;
+    }
+    /* pull both scores toward the centre seam, side by side */
+    .panel.white { background: #f4f4f5; color: #18181b; justify-content: flex-start; }
+    .panel.red   { background: #d42a2a; color: #ffffff; justify-content: flex-end; }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.4rem;
+      padding: 0 4vw;
+    }
+
+    .pscore {
+      font-size: clamp(7rem, 24vw, 22rem);
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .shido { display: flex; gap: .8rem; }
+    .shido i {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 4px solid currentColor;
+      opacity: .3;
+    }
+    .shido i.on  { opacity: 1; background: #f4c20d; border-color: #f4c20d; }
+
+    /* the cut-out: a grey notch carved into the top-centre */
+    .notch {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      background: #232327;
+      border-radius: 0 0 30px 30px;
+      padding: 20px 40px 26px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .timer {
+      font-size: 6.5rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .05em;
+      padding: .1em .58em;
+      border-radius: 20px;
+      background: #18181b;
+      border: 3px solid #3f3f46;
+      transition: color .15s, border-color .15s;
+    }
+    .timer.stopped { color: #fafafa; }
+    .timer.running { color: #4ade80; border-color: #4ade80; }
+    .timer.done    { color: #f87171; border-color: #f87171; }
+
+    .oktime {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: #18181b;
+      border: 3px solid #3f3f46;
+      border-radius: 16px;
+      padding: .1em .8em .16em;
+      min-width: 120px;
+    }
+    .oktime b {
+      font-size: 3rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #6b6b73;
+    }
+    .oktime small {
+      font-size: .8rem;
+      letter-spacing: .18em;
+      font-weight: 700;
+      color: #fbbf24;
+      min-height: .95rem;
+    }
+    .oktime.active b { color: #fafafa; }
+    .oktime.run      { border-color: #fbbf24; }
+    .oktime.run b    { color: #fbbf24; }
+    .oktime.paused   { border-color: #fbbf24; border-style: dashed; }
+    .oktime.white    { border-color: #f4f4f5; }
+    .oktime.white b  { color: #f4f4f5; }
+    .oktime.red      { border-color: #f87171; }
+    .oktime.red b    { color: #f87171; }
+    .oktime .arrow   { font-size: .9rem; color: inherit; min-height: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <!-- mirrored: RED left, WHITE right -->
+    <section class="panel red">
+      <div class="side">
+        <div class="pscore" data-score="red">0</div>
+        <div class="shido" data-side="red"><i></i><i></i><i></i></div>
+      </div>
+    </section>
+    <section class="panel white">
+      <div class="side">
+        <div class="pscore" data-score="white">0</div>
+        <div class="shido" data-side="white"><i></i><i></i><i></i></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="notch">
+    <div id="timer" class="timer stopped">2:30</div>
+    <div id="ok" class="oktime"><div id="okArrow" class="arrow"></div><b id="okElapsed">0</b><small id="okAward"></small></div>
+  </div>
+
+  <script>
+    const NAMES = { yuko: "YUKO", wazaari: "WAZA-ARI", ippon: "IPPON" };
+    const timerEl = document.getElementById("timer");
+    const okBox = document.getElementById("ok");
+    const okElapsedEl = document.getElementById("okElapsed");
+    const okAwardEl = document.getElementById("okAward");
+
+    function fmt(sec) {
+      sec = Math.max(0, Math.ceil(sec));
+      return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+    }
+    function render(s) {
+      if (!s || s.type !== "state") return;
+      document.querySelectorAll('[data-score="white"]').forEach(el => el.textContent = s.white);
+      document.querySelectorAll('[data-score="red"]').forEach(el => el.textContent = s.red);
+
+      const shido = s.shido || { white: 0, red: 0 };
+      ["white", "red"].forEach(side => {
+        const n = shido[side] || 0;
+        document.querySelectorAll('.shido[data-side="' + side + '"] i').forEach((dot, i) => {
+          dot.classList.toggle("on", i < n);
+        });
+      });
+
+      const t = s.timer || { remaining: 0, running: false };
+      timerEl.textContent = fmt(t.remaining);
+      timerEl.className = "timer " + (t.remaining <= 0 ? "done" : (t.running ? "running" : "stopped"));
+
+      const o = s.osae || {};
+      const active = o.active !== undefined ? o.active : o.running;
+      okBox.className = "oktime"
+        + (active ? " active" : "")
+        + (o.running ? " run" : (active ? " paused" : ""))
+        + (o.side ? " " + o.side : "");
+      document.getElementById("okArrow").textContent =
+        !active ? "" : (o.side === "white" ? "◀ WHITE" : o.side === "red" ? "RED ▶" : "◀  ?  ▶");
+      okElapsedEl.textContent = Math.floor(o.elapsed || 0);
+      okAwardEl.textContent = (active && o.award) ? NAMES[o.award] : "";
+    }
+
+    /* ---------- receive state from the control window ---------- */
+    let lastMsg = 0;
+    function accept(data) {
+      if (!data || data.type !== "state") return;
+      lastMsg = Date.now();
+      render(data);
+    }
+
+    window.addEventListener("message", (e) => accept(e.data));
+
+    let bc = null;
+    try { bc = new BroadcastChannel("judo"); } catch (e) {}
+    if (bc) bc.onmessage = (e) => accept(e.data);
+
+    // storage events are the most reliable channel for local file:// windows
+    window.addEventListener("storage", (e) => {
+      if (e.key === "judo_live" && e.newValue) {
+        try { accept(JSON.parse(e.newValue)); } catch (err) {}
+      }
+    });
+
+    function announce() {
+      try { if (window.opener && !window.opener.closed) window.opener.postMessage({ type: "ready" }, "*"); } catch (e) {}
+      try { bc && bc.postMessage({ type: "ready" }); } catch (e) {}
+    }
+    announce();
+    setTimeout(announce, 400);
+    setTimeout(announce, 1200);
+
+    // fallback poll in case no live channel is available at all
+    setInterval(() => {
+      if (Date.now() - lastMsg < 1200) return;
+      try {
+        const s = JSON.parse(localStorage.getItem("judo_live") || "null");
+        if (s) render(s);
+      } catch (e) {}
+    }, 300);
+  </script>
+</body>
+</html>
