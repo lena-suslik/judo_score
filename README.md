@@ -2,6 +2,9 @@
 
 **Languages: English · [Deutsch](README.de.md)**
 
+*I built this as a small project to try out Claude Code. Feel free to use it, and
+feedback is welcome.*
+
 A judo scoreboard for training, club competitions and small tournaments. It runs
 in a web browser from two local files. There is no installation, no server and no
 network connection; no account is needed.
@@ -195,4 +198,5 @@ Press **`?`** in the control window for this list at any time.
 
 ## License
 
-See the repository for license information.
+MIT – see [LICENSE](LICENSE). You can use, change and share it freely; it comes
+with no warranty.

@@ -2,6 +2,9 @@
 
 **Sprachen: [English](README.md) · Deutsch**
 
+*Ich habe das als kleines Projekt gebaut, um Claude Code auszuprobieren. Benutz es
+gern, und über Feedback freue ich mich.*
+
 Eine Judo-Anzeigetafel für Training, Vereinskämpfe und kleine Turniere. Sie läuft
 im Webbrowser aus zwei lokalen Dateien. Es gibt keine Installation, keinen Server
 und keine Netzwerkverbindung; ein Konto ist nicht nötig.
@@ -205,4 +208,5 @@ Drücke jederzeit **`?`** im Bedien-Fenster für diese Liste.
 
 ## Lizenz
 
-Siehe Repository für Lizenzinformationen.
+MIT – siehe [LICENSE](LICENSE). Du darfst es frei benutzen, ändern und
+weitergeben; es gibt keine Gewährleistung.
