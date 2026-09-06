@@ -2,16 +2,16 @@
 
 **Sprachen: [English](README.md) · Deutsch**
 
-Eine kostenlose Judo-Anzeigetafel für Training, Vereinskämpfe und kleine Turniere.
-Sie läuft komplett im Webbrowser – **nichts zu installieren, kein Internet nötig,
-kein Konto.**
+Eine Judo-Anzeigetafel für Training, Vereinskämpfe und kleine Turniere. Sie läuft
+im Webbrowser aus zwei lokalen Dateien. Es gibt keine Installation, keinen Server
+und keine Netzwerkverbindung; ein Konto ist nicht nötig.
 
-Sie besteht aus nur **zwei Dateien**:
+Die zwei Dateien:
 
 | Datei | Was es ist | Wohin damit |
 | --- | --- | --- |
 | `control.html` | Das **Bedien-Fenster**. Hier klickst du, um den Kampf zu führen (Punkte, Zeit, Strafen …). | Auf den Laptop der Person am Tisch. |
-| `display.html` | Das **Zuschauer-Fenster**. Groß, aufgeräumt, nur zum Anschauen. Folgt dem Bedien-Fenster live. | Auf den Fernseher / Beamer / zweiten Monitor, der zu den Kämpfern und zum Publikum zeigt. |
+| `display.html` | Das **Zuschauer-Fenster**. Nur zum Anschauen; folgt dem Bedien-Fenster live. | Auf den Fernseher / Beamer / zweiten Monitor, der zu den Kämpfern und zum Publikum zeigt. |
 
 | Bedien-Fenster | Zuschauer-Anzeige |
 | --- | --- |
@@ -19,9 +19,9 @@ Sie besteht aus nur **zwei Dateien**:
 
 ---
 
-## Schnellstart für komplette Neulinge
+## Schnellstart
 
-Du musst **kein** Technik-Mensch sein. Das ist der ganze Ablauf:
+Der ganze Ablauf, ohne technische Kenntnisse:
 
 ### 1. Herunterladen
 
@@ -46,19 +46,17 @@ Dateien `control.html` und `display.html` darin.
   Firefox geht auch).
 - Das ist das Bedien-Fenster – du kannst sofort einen Kampf werten.
 
-### 4. Für den Raum anzeigen (optional, aber genau darum geht es)
+### 4. Auf einem zweiten Bildschirm anzeigen (optional)
 
 - Schließe deinen zweiten Bildschirm / Beamer / Fernseher an.
 - Klick im Bedien-Fenster unten rechts auf **`Anzeigefenster öffnen`**.
 - Ein zweites Fenster öffnet sich – das ist die Zuschauer-Anzeige.
 - Zieh dieses Fenster auf den großen Bildschirm und drücke **`F`** für Vollbild.
 
-Fertig. Nach dem Download kannst du es für immer benutzen – offline, im Flugzeug,
-in einer Halle ohne WLAN, egal.
+Nach dem Download funktioniert es offline ohne weitere Einrichtung.
 
-> **Ja – du brauchst wirklich nur die zwei Dateien in einem Ordner.** Keine
-> Einrichtung, kein Server, kein Build-Schritt. Doppelklick auf `control.html`
-> ist die ganze „Installation“.
+> Nötig sind nur die zwei Dateien in einem Ordner. Keine Einrichtung, kein Server,
+> kein Build-Schritt.
 
 ---
 
@@ -67,11 +65,11 @@ in einer Halle ohne WLAN, egal.
 Beide Fenster sind **im selben Browser auf demselben Computer** offen. Sie teilen
 ihre Daten über den Browser selbst (kein Netzwerk). Das heißt:
 
-- ✅ Zwei Fenster / zwei Monitore an **einem** Computer → funktioniert einwandfrei.
-- ❌ Bedienung auf dem einen Laptop, Anzeige auf einem anderen Laptop → das wird
-  **nicht** synchron laufen.
-- 👍 Am besten: die Anzeige mit dem Knopf **`Anzeigefenster öffnen`** starten,
-  nicht `display.html` von Hand öffnen.
+- Zwei Fenster oder zwei Monitore an **einem** Computer: funktioniert.
+- Bedienung auf dem einen Laptop, Anzeige auf einem anderen Laptop: läuft **nicht**
+  synchron.
+- Die Anzeige mit dem Knopf **`Anzeigefenster öffnen`** starten, nicht
+  `display.html` von Hand öffnen.
 - Das Bedien-Fenster funktioniert auch allein, wenn du nur einen Monitor hast.
 
 ---
@@ -202,29 +200,8 @@ Drücke jederzeit **`?`** im Bedien-Fenster für diese Liste.
   Tab schließen, `control.html` wieder öffnen – alles ist noch da.
 - Weil es pro Browser gespeichert wird: ein *anderer* Browser, ein anderer Computer,
   ein privates / Inkognito-Fenster oder „Browserdaten löschen“ fangen bei null an.
-- Der **erste Klick** auf die Seite schaltet den Ton frei (eine Browser-Regel – da
-  ist nichts kaputt).
+- Der **erste Klick** auf die Seite schaltet den Ton frei (eine Browser-Regel).
 - Es verlassen keine Daten deinen Computer. Es gibt keinen Server und kein Tracking.
-
----
-
-## Haben Projekte normalerweise READMEs in mehreren Sprachen?
-
-Ja, das ist üblich, wenn die Zielgruppe nicht hauptsächlich Englisch spricht. Die
-übliche Konvention ist:
-
-- `README.md` – die Standard-Datei, die GitHub anzeigt, normalerweise **Englisch**.
-- `README.de.md`, `README.fr.md`, … – eine Datei pro Übersetzung.
-- Eine kleine **Sprachumschalter**-Zeile ganz oben, die die Versionen verlinkt
-  (wie die Zeile oben in dieser Datei).
-
-Dieses Projekt behält Englisch als Standard-`README.md` und eine vollständige
-deutsche Übersetzung in [`README.de.md`](README.de.md). Wenn deine Nutzer
-überwiegend deutsch sind, ist es genauso in Ordnung, das zu tauschen (Deutsch als
-`README.md`, Englisch als `README.en.md`) – behalte nur die Umschalter-Zeile,
-damit man die andere Version findet.
-
----
 
 ## Lizenz
 

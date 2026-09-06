@@ -2,15 +2,16 @@
 
 **Languages: English · [Deutsch](README.de.md)**
 
-A free judo scoreboard for training, club competitions and small tournaments.
-It runs entirely in your web browser – **nothing to install, no internet needed, no account.**
+A judo scoreboard for training, club competitions and small tournaments. It runs
+in a web browser from two local files. There is no installation, no server and no
+network connection; no account is needed.
 
-It is made of just **two files**:
+The two files:
 
 | File | What it is | Where it goes |
 | --- | --- | --- |
 | `control.html` | The **operator screen**. You click here to run the match (scores, timer, penalties …). | On the laptop of the person running the table. |
-| `display.html` | The **audience screen**. Big, clean, read-only. It follows the control screen live. | On the TV / projector / second monitor that faces the athletes and the public. |
+| `display.html` | The **audience screen**. Read-only; it follows the control screen live. | On the TV / projector / second monitor that faces the athletes and the public. |
 
 | Control screen | Audience display |
 | --- | --- |
@@ -18,9 +19,9 @@ It is made of just **two files**:
 
 ---
 
-## Quick start for absolute beginners
+## Quick start
 
-You do **not** need to be technical. This is the whole process:
+The full process, no technical knowledge required:
 
 ### 1. Download it
 
@@ -42,18 +43,17 @@ You now have a folder called `judo_score` (or `judo_score-main`) that contains
 - It opens in your normal web browser (Chrome or Edge recommended, Firefox works too).
 - This is the operator screen – you are ready to score a match.
 
-### 4. Show it to the room (optional but that's the point)
+### 4. Show it on a second screen (optional)
 
 - Connect your second screen / projector / TV.
 - In the control window, click **`Open display window`** (bottom-right).
 - A second window opens – this is the audience display.
 - Drag that window onto the big screen and press **`F`** to make it fullscreen.
 
-That's it. After the download you can use it forever, offline, on a plane, in a
-gym with no Wi-Fi – it does not matter.
+Once downloaded, it works offline with no further setup.
 
-> **Yes – you really just need the two files in one folder.** There is no setup,
-> no server, no build step. Double-clicking `control.html` is the whole install.
+> The two files in one folder are all that is required. There is no setup step,
+> no server and no build step.
 
 ---
 
@@ -62,11 +62,11 @@ gym with no Wi-Fi – it does not matter.
 Both windows are open **in the same browser on the same computer**. They share
 their data through the browser itself (no network). This means:
 
-- ✅ Two windows / two monitors on **one** computer → works perfectly.
-- ❌ Control on one laptop, display on a different laptop → they will **not** sync.
-- 👍 Best results: open the display with the **`Open display window`** button rather
-  than opening `display.html` by hand.
-- The control screen keeps working on its own if you only have one monitor.
+- Two windows or two monitors on **one** computer: works.
+- Control on one laptop, display on a different laptop: does **not** sync.
+- Open the display with the **`Open display window`** button rather than opening
+  `display.html` by hand.
+- The control screen also works on its own if you only have one monitor.
 
 ---
 
@@ -95,7 +95,7 @@ their data through the browser itself (no network). This means:
   Taking the shido back also takes the win back.
 - During **Golden Score**, *any* shido loses the match.
 
-### Doctor calls (Arzt)
+### Doctor calls 
 
 - Three squares per side to record how often the doctor had to come onto the mat.
 - Click = +1, right-click = −1. Shown on the audience screen only once it is used.
@@ -189,28 +189,9 @@ Press **`?`** in the control window for this list at any time.
   Close the tab and reopen `control.html` and it is all still there.
 - Because it is stored per-browser: a *different* browser, another computer, a
   private / incognito window, or "clear browsing data" all start from scratch.
-- The **first click** on the page unlocks the sound (a browser rule – there is
-  nothing to fix).
-- No data ever leaves your computer. There is no server and no tracking.
+- The **first click** on the page unlocks the sound (a browser rule).
+- No data leaves your computer. There is no server and no tracking.
 
----
-
-## Do projects usually have READMEs in several languages?
-
-Yes, it is common when the audience is not mainly English-speaking. The usual
-convention is:
-
-- `README.md` – the default file GitHub shows, normally **English**.
-- `README.de.md`, `README.fr.md`, … – one file per translation.
-- A small **language switcher** line at the very top linking the versions together
-  (like the line at the top of this file).
-
-This project keeps English as the default `README.md` and a full German
-translation in [`README.de.md`](README.de.md). If your users are mostly German,
-it is equally fine to swap them (German as `README.md`, English as `README.en.md`) –
-just keep the switcher line so people can find the other one.
-
----
 
 ## License
 
